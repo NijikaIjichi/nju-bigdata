@@ -1,0 +1,278 @@
+\documentclass{article}
+\usepackage{ctex}
+\usepackage{geometry}
+\geometry{left=3.18cm,right=3.18cm,top=2.54cm,bottom=2.54cm}
+\usepackage{graphicx}
+\pagestyle{plain}
+\usepackage{setspace}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{fontspec}
+\usepackage{tikz}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{ulem}
+\setmonofont{Fira Code}
+\setmainfont{Times New Roman}
+% \setCJKsansfont{Noto Sans CJK SC}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    filecolor=magenta,      
+    urlcolor=cyan
+}
+\lstset{
+  numbers=left, 
+  numberstyle=\tiny,
+  keywordstyle=\color{blue!70},
+  commentstyle=\color{red!50!green!50!blue!50},
+  frame=trbl,
+  rulesepcolor=\color{red!20!green!20!blue!20},
+  basicstyle=\ttfamily\scriptsize
+}
+\date{}
+\begin{document}
+
+	\begin{center}
+		\quad \\
+		\quad \\
+		\heiti \fontsize{30}{17} 大数据处理综合实验
+		\vskip 0.5cm
+		\heiti \fontsize{45}{17} 课\quad 程\quad 设\quad 计
+		\vskip 3.5cm
+		\heiti \zihao{2} 网站访问日志分析
+	\end{center}
+	\vskip 3.5cm
+
+	\begin{quotation}
+		\songti \fontsize{15}{15}
+		\doublespacing
+		\par\setlength\parindent{9em}
+		\quad 
+
+		成员：\underline{\makebox[15em]{\qquad xxx \qquad }}
+		
+		学号：\underline{\makebox[15em]{\qquad xxxxxxxxx \qquad }}
+				
+		邮箱：\underline{\makebox[15em]{\qquad xxxxxxxxx@xxxxx.xxx.xxx.xx \qquad }}
+
+    成员：\underline{\makebox[15em]{\qquad xxx \qquad }}
+		
+		学号：\underline{\makebox[15em]{\qquad xxxxxxxxx \qquad }}
+				
+		邮箱：\underline{\makebox[15em]{\qquad xxxxxxxxx@xxxxx.xxx.xxx.xx \qquad }}
+    
+    导师: \underline{\makebox[15em]{\qquad xx \qquad }}
+
+    研究领域: \underline{\makebox[13em]{\qquad 云计算与大数据 \qquad }}
+		\vskip 2cm
+		\centering
+		\today
+	\end{quotation}
+	
+	\newpage
+	
+	\tableofcontents
+  
+  \newpage
+  \section{小组分工}
+  
+  本次实验的整体代码架构和所用第三方库由两人共同讨论并确定。在确定整体框架后，由xxx负责编写代码，由xxx负责测试代码和编写报告。
+  
+  \section{课程设计题目}
+
+  我们选择的课程设计题目是第一个，即网站访问日志分析。
+
+  \section{摘要}
+  我们采用 MapReduce 框架，完成了网络访问日志分析的任务
+
+  在此课程设计中，我们设计了两套自定义 MapReduce 基类，分别对应解决两类任务所需要的
+  不同策略。通过对对应基类进行继承和重载，我们解决了 4 个要求各异的任务。同时，我们利用
+  课程中学到的知识，设计了 Combiner 和 Partitioner, 分别用来优化网络传输带宽和自定义中间结果分区，整体解决方案效率较高。
+  最终，我们对不同任务输出的结果进行分析，得到了关于此网站状态的有益的信息。
+
+  \section{研究问题背景}
+  
+  网页日志中包含了一个网页的各种活动信息，对网页日志进行分析，能得出许多深刻而有益的结论。
+  随着互联网的飞速发展，各种网站产生的数据飞速增长，复杂度和规模都在不断上升。日志分析是
+  典型的可并行化的问题，它包含对每条日志的同样的分析动作，分析产生的综合信息需要后续汇总
+  处理，同时，汇总的顺序并不会影响结论，因此非常适合采用 MapReduce 框架设计并行程序
+  分析处理。我们的课程设计设计了一套 MapReduce 程序，分析了某网站的网页日志数据，汇总
+  出几类信息，并在此基础上得出了关于此网站的一些结论。
+
+  \section{技术难点和解决方案}
+  \subsection{主要技术难点}
+  在完成实验时，我们遇到了如下一些问题。
+  \begin{enumerate}
+    \item 日志文件的可靠解析方式
+    \item 对任务进行合理分解，并设计 MapReduce 并行化算法
+    \item 合理设计代码结构以复用代码并提供未来的可扩展性
+  \end{enumerate}
+  
+  其中的技术难点主要在日志文件的解析和合理设计算法上。日志文件的解析涉及到比较复杂的字符串解析，如解析时间戳、解析URL等等，
+  这部分若自己实现，则显得繁琐，所以我们使用了开源的第三方库帮助我们解析日志。对于合理设计算法，难度则主要在设计可复用的代码
+  框架并提供可扩展性上，问题本身的可并行性则比较明显。
+
+  下面一节会首先介绍设计思路，然后详细介绍实现细节。
+  \subsection{设计思路和详细设计说明}
+  \subsubsection{日志解析（任务一）}
+  通过观察日志本身和查询资料，我们发现，此日志的格式为\textbf{Combined Log Format}\cite{clf}. 能够解析这种格式的第三方库非常多，我们采用 \verb|grok|\cite{grok}库帮助我们
+  直接解析日志文件格式。
+
+  我们自定义 \verb|Log|类以存储日志解析的结果，其内包含多个 \verb|final|字段和对应的 \verb|get|方法。
+  我们将其构造函数声明为 \verb|private|, 仅向外提供一个 \verb|parseLog|的静态方法，此方法接受日志字符串
+  并返回根据日志构造出的 \verb|Log|对象。这么做之后用户只能通过 \verb|parseLog|构造 \verb|Log|对象，能
+  防止构造函数被滥用。
+
+  \verb|parseLog|方法基本上只是对 \verb|grok|库解析日志功能的封装，我们首先使用 \verb|grok|将日志字符串
+  解析为键值对，然后利用这些键值对初始化 \verb|Log|对象并返回。
+
+  对于解析出的日志文件，我们仅将其存储在内存中，并不会写入磁盘，后续的任务也不会从磁盘读取任务一
+  的中间结果。这是因为，我们写入的解析结果，在磁盘上仍以结构化文本形式存在，后续任务将其读取出来时，
+  并不能直接用来初始化对象，仍需要新的一轮字符串解析流程，而且这部分就得由我们自己手工编写了。这样
+  我们既没有提升什么效率，又增加了手工编写的工作量以及出错的几率，所以不如直接读取原始日志数据，然后
+  采用第三方库将其解析为内存中的数据结构。这样做不仅不会带来性能瓶颈，还能节约工作量，提升可靠性。
+
+  \subsubsection{任务分解和并行算法设计（任务2--5）}
+
+  此课程设计中，任务一已在上一部分解决，剩余五个任务中，前四个可用 MapReduce 解决。这是因为，他们
+  都是对每条日志，提取出我们关心的信息输出作为中间结果，然后对中间结果综合形成最终结果。这非常适合
+  采用并行程序解决。我们将``从每条日志中提取中间结果''和``综合中间结果''两部分并行化，能带来非常大的
+  性能提升。
+
+  我们通过观察几个任务，能大致将任务分为两类。一类是 \verb|Count| 类任务，即我们要做的都是
+  统计某种东西出现的个数；另一类是 \verb|Unique| 类任务，即我们不仅统计某种现象的出现，还要对
+  现象的来源进行统计，即去重。我们针对这两类任务，分别设计了两套基类，通过对基类的继承和实现，我们
+  设计出针对每个任务的算法。
+
+  首先，我们介绍两套基类的实现。
+
+  \paragraph{Count 类任务} 对此类任务，我们在 \verb|CountMapred.java| 文件中定义 \verb|CountMapred| 类来抽象解决方案。
+
+  \verb|CountMapred| 类中包含两个静态抽象类，为 \verb|CountMapper| 和 \verb|CountReducer|，以及一个静态的
+  \verb|bindJob| 方法。最后一个方法封装了此类的使用方法。
+
+  两个内部类分别重载了 \verb|map| 和 \verb|reduce| 方法。
+  
+  \verb|map| 方法的输入键值对为 \verb|<行偏移量, 一行的内容>|。
+  输入文件中一行就是一个完整的日志，所以\verb|map|方法可以直接采用这种输入键值对。
+  \verb|map| 方法首先调用 \verb|Log| 类的 \verb|parseLog| 静态方法解析日志，然后
+  将日志解析结果传给自身的抽象方法 \verb|toKey| 获得需要输出的键。得到这个键以后，\verb|map| 就
+  判空并输出键值对\verb|<new Text(key), 1>|。 \verb|map| 方法的输出键值对为 \verb|Text, 1|。其含义为
+  我们关心的资源出现了一次。
+
+  \verb|map| 方法所调用的 \verb|toKey| 抽象方法是用来实现自定义策略的地方，使用 \verb|CountMapper| 的
+  程序员需要重载此方法，自定义如何从日志中获得感兴趣的信息。此方法可以提供灵活性和可扩展性。
+
+  \verb|reduce| 则比较简单，它将资源出现的次数加起来，然后输出资源出现的总次数。\verb|reduce| 的输入键值对
+  类型是\verb|<Text, [value]>|，其意义则是``我们关心的资源和其出现次数列表''，因为中间可能会经过 Combiner，
+  所以次数不一定为 1 。\verb|reduce| 的输出则是统计结果，格式为 \verb|<Text, total>|，前者是资源名，后者则是总数。
+
+  我们在 \verb|bindJob| 中做的事，其实和平常直接写 MapReduce 程序时在 \verb|main| 函数
+  中做的事相近，此处只是将其封装起来，作为固定的执行策略。我们在这函数中，将 \verb|CountReducer| 
+  同时设置为 \verb|Reducer| 和 \verb|Combiner|，因为 \verb|Combiner| 做的事情确实和 \verb|Reducer| 没有区别。
+  我们通过这种方式节约了网络传输带宽。
+
+  此类任务并不需要自定义 \verb|Partitioner|。
+  
+  \paragraph{Unique 类任务} 此类任务的策略定义在 \verb|UniqueMapred.java| 文件中，为 \verb|UniqueMapred| 类。
+
+  此类任务涉及到输入日志中的两个变量，而且涉及到去重，因此实现会更为复杂一些。
+  
+  在之前的实验中，我们自己定义了 \verb|GenericPair| 类，它可以容纳一对支持 hadoop 接口
+  的量，自己也实现了 hadoop 要求的接口，因此可以直接在 MapReduce 的过程中使用。我们
+  继承这个类，定义 \verb|TextPair| 类，容纳两个 \verb|Text| 类型的变量。
+
+  我们自定义的 \verb|UniqueMapper| 向外提供两个可重载的抽象方法 \verb|toKey1| 和 \verb|toKey2|，用来
+  从日志中获取两个感兴趣的信息，提供灵活性和可扩展性。在 \verb|map| 方法中，我们依旧是首先解析日志，然后调用这两个
+  抽象方法获取一对信息，随后输出这一对信息。\verb|map| 的输入格式是 \verb|<偏移量，一行>|, 输出是
+  \verb|<TextPair(key1, key2), NullWriteable>|。即输出的值留空，键是一对key。
+
+  我们也定义了 \verb|Combiner| 做本地的 \verb|reduce|，以节省网络带宽。这里我们要做的事很简单，
+  因为我们要去重，即对于 \verb|key1| 相同的，合并所有 \verb|key2| 相同的，所以我们
+  只需要丢弃 \verb|Combiner| 的 \verb|values|, 输出 \verb|<key, NullWriteable>|即可。
+  
+  我们自定义 \verb|Partitioner|，以保证相同第一个键的一定到达相同的 \verb|Reducer|。
+  自定义方式和课上学过的一样，仅将 \verb|TextPair| 的第一个发给 \verb|hashPartitioner| 即可。
+
+  最后是自定义的 \verb|UniqueReducer|。为了去重，我们在类中保存 3 个变量：\verb|lastK1|、\verb|lastK2|
+  和\verb|count|。前两者是记录上一次见到的两个键的内容，最后一个则是在第一个键相同的情况下，
+  有多少个不同的第二个键。
+
+  \verb|setup| 函数将 \verb|lastK1| 和 \verb|lastK2| 初始化为空，\verb|count| 初始化为 0 。
+
+  \verb|reduce| 的输入是 \verb|<TextPair, [NullWriteable]>|，此处仅有键是
+  有用的。对信息的统计和去重是在 \verb|reduce| 的多次运行中完成的。
+  经过我们自定义的 \verb|Partitioner| 和 hadoop 的排序，到达 \verb|Reducer|的
+  \verb|Pair| 的顺序必定为具有相同\verb|key1| 的聚在一起，在这聚起来的一堆中，具有
+  相同 \verb|key2| 的也聚在一起。因此我们首先将 \verb|key1| 和上一次的比较，如果相同，
+  我们就再比较 \verb|key2|和上一次的, 若相同，就不做什么事情，否则更新 \verb|lastK2|,
+  并增加 \verb|count|。如果 \verb|key1| 也改变，而且上一次的不是空，说明我们已经统计完
+  \verb|key1| 的信息了，就输出，并更新 \verb|lastK1|，最终将其余变量
+  更新为 \verb|null| 和 0。这里对算法的介绍未完全介绍判空的情形，实际比这个复杂，详见代码。
+  
+  \verb|reduce| 的输出是\verb|<key1, count>|，其意义是对于 \verb|key1| 代表的资源，
+  互不相同的 \verb|key2| 出现了 \verb|count| 次。
+
+  \verb|reduce| 的 \verb|cleanup| 方法用来输出可能未输出的最后一组信息。
+
+  \verb|UniqueMapper| 同样封装了 \verb|bindJob| 方法，用于封装其使用方式。
+
+  有了这两套基类后，几个任务的实现就简化为继承需要的类，重载方法，在 \verb|main| 函数中初始化并调用
+  \verb|bindJob| 三步走了。
+
+  \textbf{任务二} 在 \verb|CountTimes.java|中实现。其继承 \verb|CountMapper|，重载 \verb|toKey| 为从
+  \verb|Log| 中获取其 \verb|request| 信息。  
+  
+  \textbf{任务三} 在 \verb|UniqueIP.java| 中实现。其继承 \verb|UniqueMapper|，重载 \verb|toKey1| 为从
+  \verb|Log| 中获取其 \verb|request| 信息，\verb|toKey2| 为获取 \verb|clientIP| 信息。
+  
+  \textbf{任务四} 在 \verb|CountHour.java| 中实现。其继承 \verb|CountMapper|，重载 \verb|toKey| 为从
+  \verb|Log| 中获取精确到小时的时间戳。
+  
+  \textbf{任务五} 在 \verb|CountTimes.java| 中实现。其继承 \verb|CountMapper|，重载 \verb|toKey| 为从
+  \verb|Log| 中获取其 \verb|agent| 信息。
+
+  \section{输入输出格式}
+  我们的每个任务的输入都是原始数据，其格式为\textbf{Combined Log Format}\cite{clf}。
+
+  任务的输出格式严格按照课程指导ppt实现，为\verb|key[\TAB]value|形式。
+
+  \section{程序运行试验结果说明和分析}
+
+  按照要求跑出来的任务输出并没有按照值排序，因此我们写了一个很简单的 \verb|Sorter| 将输出的各项以值降序排列，以便看出规律。输出文件可在 hdfs 中找到。
+
+  此网站在两日内有 13770 次访问。用户通常在上午（8时 -- 12时）和傍晚至夜间（19时 -- 00时）访问量较大。在 2013 年 9 月 18 日的下午 15 时至
+   17 时，此网站访问量急剧上升，至原来的约1.5倍到两倍，可能是因为其举办了活动或因为一些新闻获得了额外的关注。通过 UA 的统计信息可以看出，此网站的用户使用
+   桌面端访问较多，使用 Windows, Macintosh，Linux 的用户数量差距不大，结合后面资源访问信息可看出网站的用户很可能是 IT 从业者。
+   UA中还有各类爬虫，说明此网站对爬虫持开放态度，或技术不足。此网站的 UA 信息中单项最多的是\verb|DNSPod-Monitor/1.0|,
+   说明其域名解析使用的是DNSPod, 并开启了D监控。
+
+   此网站的资源获取信息中，滤去JavaScript, 图片等杂音，可以从资源中的各类计算机术语看出，这应当是某个IT相关网站，有多个板块，且有博客功能。
+   用户大部分时间用在浏览各种文章和博客，当日大概是有一个用户注册。总的来说是比较活跃的社区，不存在关站风险。
+
+  \section{总结}
+  本次实验我们采用 MapReduce 并行程序设计对一个网站的日志进行了分析，得到相关信息，并得出了有益的结论。本次课程
+  设计的特点是采用 MapReduce 并行程序设计，大大加速了分析日志的速度，并具有较好的性能和可扩展性。
+  
+  我们的并行程序能够统计\textbf{资源请求次数}、\textbf{独立IP}、
+  \textbf{每小时访问网站次数}、\textbf{访问网站的浏览器类型}信息并输出为文件。我们另外
+  还实现了一个简单的排序器提高输出文件的可读性。输出的文件仍需要进一步写脚本统计等等，并不是
+  非常清晰，可写另外的 MapReduce 过程，将多种统计信息联系起来，能得出更深刻的结论。
+
+  在性能上，我们采用自定义的 \verb|Combiner| 进行本地聚合，降低所需的网络传输带宽，同时采用
+  自定义 \verb|Partitioner| 消除了 \verb|reducer| 数据的相关性。但仍存在必须从原始文件
+  读入并解析的问题，可以做的改进是在任务一解析好并输出为二进制，在后续任务时，自定义 \verb|InputFormat| 
+  直接读二进制初始化结构体，这样能达到更好的性能。
+
+  在可扩展性上，我们针对任务的特点，设计了两组基类并封装了两套处理逻辑，实现任务时，仅需要重载
+  对应方法即可，可扩展性较好。基类中仍有不少部分是写死的，在本次设计中是合理的，但若后续还有别的
+  任务需要处理，则需要提供更多可重载的抽象接口以提高扩展性。
+
+  \newpage
+  \begin{thebibliography}{99}
+    \bibitem{clf} \href{https://httpd.apache.org/docs/2.4/logs.html#combined}{https://httpd.apache.org/docs/2.4/logs.html\#combined}
+    \bibitem{grok} \href{https://github.com/thekrakken/java-grok}{https://github.com/thekrakken/java-grok}
+  \end{thebibliography}
+\end{document}
